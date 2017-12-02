@@ -3,10 +3,11 @@ The final drone project for CMSC 828T (Fall 2017)
 
 Packages we are using
 ---------------------
-
+(List ROS packages here)
 
 
 Todo:
+-----
 1. Be able to extract data (imu/odometry, images) from the drone in ROS
 2. Figure out how to use drone control API
 3. See if we can find a structure-from-motion ROS package
