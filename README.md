@@ -25,3 +25,16 @@ Project Flow Outline
    - Maybe implement a Kalman filter or something similar (or use a package)
    - Maybe use a structure-from-motion package
    - Need to implement logic of control loop for each state
+
+
+How to run the project
+----------------------
+1. Clone the git repo into the src folder in your ROS workspace.
+2. Rename the folder to drone5
+3. Cd into ROS workspace and use catkin_make
+4. Source anything necessary
+5. You should now be able to run "rosrun drone5 [file].py" where [file] is any python file in the project folder.
+
+Adding things to the project
+----------------------------
+ - New package dependencies need to be added to the package.xml file and imported in the python files
