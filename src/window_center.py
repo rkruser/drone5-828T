@@ -1,4 +1,4 @@
-#! /usr/bin/python
+#!/usr/bin/env python
 
 #This script takes the position of all the tags detected in the camera frame by ar_track_alvar package.
 # If the number of tags detected is 4, it finds the center of the window from the 4 centers of tags
