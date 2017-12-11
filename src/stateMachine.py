@@ -5,8 +5,19 @@
 # Functions as the outer control loop for the drone
 
 import rospy
+import time
 from std_msgs.msg import String
 # Import other necessary ROS packages here
+
+## Our classes
+import drone_control as dcontr
+import keyboard_controller as kcontr
+import drone_cam as dcam
+import window_center as wcenter
+import drone_state as dstate
+import drone_video_display as dvid
+
+
 
 # Can add more states if necessary
 # The following data structure is currently unused and is mostly for visual reference
@@ -31,7 +42,7 @@ AllStates = [
 class State:
     def __init__(self, state):
         self.value = state
-
+    
         # tag positions
         self.tagLowerLeft = None
         self.tagLowerRight = None
@@ -49,25 +60,18 @@ class State:
 class StateMachine:
     def __init__(self):
         self.state = State("READY")
-        rospy.init_node('StateMachine', anonymous=True)
+
+        # Objects that interface with the drone
+        self.controller = dcontr.DroneControl()
+        self.keyboard = kcontr.KeyboardController()
+#        self.window = wcenter.??
+        self.display = dvid.DroneVideoDisplay()
 
         ## Add drone control publishers here *****
         # The following publisher/rate is from the tutorial
-        self.pub = rospy.Publisher('chatter', String, queue_size=10)
-        self.rate = rospy.Rate(10) # 10hz
+        #self.pub = rospy.Publisher('chatter', String, queue_size=10)
+        #self.rate = rospy.Rate(10) # 10hz
 
-
-        ## Add drone state subscribers here ******
-        # e.g.
-        # rospy.Subscriber("chatter", String, callback)
-        # where "chatter" is what we subscribe to
-        # String is the type of data obtained
-        # callback is a function that handles the data and updates state if necessary
-        # callback can be a function from this class instance, e.g. self.DoThing(msg)
-        #   which has access to the class variables of this instance
-
-        # We may want to use service / client instead of publisher subscriber,
-        # depending on the drone interface
 
     def ready(self, msg):
         pass
@@ -100,8 +104,10 @@ class StateMachine:
         pass    
 
 
-    # The callback to feed into subscriber
-    def callback(self, msg):
+
+
+    def run(self):
+      while True:
         if self.state.value == "READY":
             self.ready(msg)
         elif self.state.value == "TAKEOFF":
@@ -123,15 +129,17 @@ class StateMachine:
         elif self.state.value == "FAIL":
             self.fail(msg)
 
+        time.sleep(0.001)
+       
 
 
-    def run(self):
+
     ## The following is from the tutorial
-        while not rospy.is_shutdown():
-            hello_str = "hello world %s" % rospy.get_time()
-            rospy.loginfo(hello_str)
-            self.pub.publish(hello_str)
-            self.rate.sleep()
+#        while not rospy.is_shutdown():
+#            hello_str = "hello world %s" % rospy.get_time()
+#            rospy.loginfo(hello_str)
+#            self.pub.publish(hello_str)
+#            self.rate.sleep()
 
     ## When actually running, we probably want
     # rospy.spin()
@@ -141,6 +149,7 @@ class StateMachine:
 
 if __name__ == '__main__':
     try:
+        rospy.init_node('StateMachine', anonymous=True)
         S = StateMachine()
         S.run()
     except rospy.ROSInterruptException:
