@@ -7,8 +7,10 @@ catkin_package()
 #catkin_python_setup()
 
 
-install(PROGRAMS src/drone_status.py  
-		 src/drone_video_display.py    
+install(PROGRAMS src/drone_controller.py  
+		 src/drone_status.py  
+		 src/drone_video_display.py  
+		 src/joystick_controller.py  
 		 src/keyboard_controller.py
 		 src/drone_control.py
 		 src/drone_cam.py

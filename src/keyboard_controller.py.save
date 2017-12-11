@@ -6,12 +6,13 @@
 # This controller extends the base DroneVideoDisplay class, adding a keypress handler to enable keyboard control of the drone
 
 # Import the ROS libraries, and load the manifest file which through <depend package=... /> will give us access to the project dependencies
-import roslib; roslib.load_manifest('ardrone_tutorials')
+import roslib
+roslib.load_manifest('ardrone_tutorials')
 import rospy
 
 # Load the DroneController class, which handles interactions with the drone, and the DroneVideoDisplay class, which handles video display
 from drone_control import DroneControl
-from drone_video_display import DroneVideoDisplay
+#from drone_video_display import DroneVideoDisplay
 
 # Finally the GUI libraries
 from PySide import QtCore, QtGui
@@ -19,17 +20,23 @@ from PySide import QtCore, QtGui
 
 # Here we define the keyboard map for our controller (note that python has no enums, so we use a class)
 class KeyMapping(object):
-	PitchForward     = QtCore.Qt.Key.Key_W
-	PitchBackward    = QtCore.Qt.Key.Key_S
-	RollLeft         = QtCore.Qt.Key.Key_A
-	RollRight        = QtCore.Qt.Key.Key_D
-	YawLeft          = QtCore.Qt.Key.Key_Q
-	YawRight         = QtCore.Qt.Key.Key_E
-	IncreaseAltitude = QtCore.Qt.Key.Key_U
-	DecreaseAltitude = QtCore.Qt.Key.Key_J
+	PitchForward     = QtCore.Qt.Key.Key_E
+	PitchBackward    = QtCore.Qt.Key.Key_D
+	RollLeft         = QtCore.Qt.Key.Key_S
+	RollRight        = QtCore.Qt.Key.Key_F
+	YawLeft          = QtCore.Qt.Key.Key_W
+	YawRight         = QtCore.Qt.Key.Key_R
+	IncreaseAltitude = QtCore.Qt.Key.Key_Q
+	DecreaseAltitude = QtCore.Qt.Key.Key_A
 	Takeoff          = QtCore.Qt.Key.Key_Y
 	Land             = QtCore.Qt.Key.Key_H
 	Emergency        = QtCore.Qt.Key.Key_Space
+
+
+class KeyControl():
+	def __init__(self):
+		self.pitch = 0
+		self.roll
 
 
 # Our controller definition, note that we extend the DroneVideoDisplay class
@@ -121,7 +128,7 @@ if __name__=='__main__':
 
 	# Now we construct our Qt Application and associated controllers and windows
 	app = QtGui.QApplication(sys.argv)
-	controller = DroneControl()
+	controller = BasicDroneController()
 	display = KeyboardController()
 
 	display.show()

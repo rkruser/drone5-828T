@@ -1,11 +1,10 @@
 <package>
-  <description brief="AR.Drone Tutorials">
-  	Controllers developed for the "Up and flying with the AR.Drone and ROS" tutorial series
+  <description brief="Drone Window Demo">
+  	Developed for the deliverables for the final project for ENPM828T
   </description>
-  <author>Mike Hamer</author>
+  <author>Yash Manian</author>
   <license>BSD</license>
   <review status="unreviewed" notes=""/>
-  <url>http://github.com/mikehamer/ardrone_tutorials</url>
 
   <depend package="ardrone_autonomy" />
   <depend package="joy" />

@@ -38,7 +38,7 @@ class DroneControl(object):
 
 		# Publish frequency
 		self.command = Twist()
-		self.commandTimer = rospy.Timer(rospy.Duration(COMMAND_PERIOD/1000.0),self.sendCommand)
+		self.commandTimer = rospy.Timer(rospy.Duration(COMMAND_PERIOD/1000.0),self.SendCommand)
 
 	def ReceiveNavdata(self, navdata):
 		# Get State (add rest of the data later)
