@@ -9,8 +9,10 @@ from std_msgs.msg import String
 # Import other necessary ROS packages here
 
 # Can add more states if necessary
+# The following data structure is currently unused and is mostly for visual reference
 AllStates = [
-    "READY", # Waiting for user signal to start the drone on its automatic path
+    "READY", # Waiting for user signal to move to SET
+    "SET", # Spin rotors to check that they work, then wait for user takeoff signal
     "TAKEOFF", # Get the drone in the air
     "SEARCH", # Search for the window
     "MOVE_TO_WINDOW", # Fly toward the window, trying to keep centered
@@ -29,6 +31,19 @@ AllStates = [
 class State:
     def __init__(self, state):
         self.value = state
+
+        # tag positions
+        self.tagLowerLeft = None
+        self.tagLowerRight = None
+        self.tagUpperRight = None
+        self.tagUpperLeft = None
+        self.finalTag = None
+
+        # Height of drone
+        self.height = 0
+        # pos with respect to tags
+        self.pose = None
+
 
 
 class StateMachine:

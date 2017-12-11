@@ -3,9 +3,21 @@ The final drone project for CMSC 828T (Fall 2017)
 
 Packages we are using
 ---------------------
-(List ROS packages here)
+Ar\_Track\_Alvar
+Ardrone\_autonomy
+
+New Todo (12/9/17)
+-----------------
+1. Yash and Chinmay : Trajectory generation
+  - Create trajectory from drone to normal line
+  - Provide classes that subscribe to / compute all relevant data to StateMachine
+2. Ryen and Eric : Control
+  - Figure out how to send (roll, pitch, yawdot, zdot) control to move through a certain trajectory
+  - Implement the rest of state machine
 
 
+Older Todos
+-----------
 Todo:
 -----
 1. Be able to extract data (imu/odometry, images) from the drone in ROS
