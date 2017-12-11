@@ -50,3 +50,29 @@ How to run the project
 Adding things to the project
 ----------------------------
  - New package dependencies need to be added to the package.xml file and imported in the python files
+
+Class Outlines
+--------------
+DroneControl:
+-------------
+- Found in drone_control.py
+- Acts as a basic interface with the ardrone_driver package
+- Subscribes to /Navdata, and has access to all non visual sensor data from the drone, which can be then accessed as class variables.
+- Publishes Yaw, Pitch, Roll and Thrust to /cmd_vel
+- Does not initialize a ROS node, but can be called into another script that does
+
+drone_video_display:
+--------------------
+- Used for getting image feed from the drone's camera
+- Only here because it was too much of a bother to create a new keyboard controller class without it
+
+keyboard_controller:
+--------------------
+- Run this to control the drone with key presses
+- Publishes to DroneControl
+- To determine keys to be pressed, check the script
+
+DroneStatus:
+------------
+- Just a definition of all the possible drone states
+- Found in drone_state.py 
