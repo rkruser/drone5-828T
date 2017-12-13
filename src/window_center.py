@@ -8,8 +8,9 @@
 import rospy
 # ROS Image message
 from ar_track_alvar_msgs.msg import AlvarMarkers
- 
-
+from geometry_msgs.msg import Pose
+from std_msgs.msg import Bool
+from numpy import median 
 
 def callback(data):
     #If all tags are detected, they might be detected in random order
@@ -18,14 +19,14 @@ def callback(data):
         for i in range(4):
             idx.append(data.markers[i].id)
             
-    #Getting index from tags detected
+        #Getting index from tags detected
         bl_idx = idx.index(bl)
         br_idx = idx.index(br)
         tl_idx = idx.index(tl)
         tr_idx = idx.index(tr)
 
         
-    #center coordinates
+        #center coordinates
         cen_x1 = (data.markers[bl_idx].pose.pose.position.x + data.markers[tr_idx].pose.pose.position.x)/2
         cen_x2 = (data.markers[br_idx].pose.pose.position.x + data.markers[tl_idx].pose.pose.position.x)/2
         cen_x = (cen_x1 + cen_x2)/2
@@ -35,12 +36,36 @@ def callback(data):
         cen_z1 = (data.markers[bl_idx].pose.pose.position.z + data.markers[tr_idx].pose.pose.position.z)/2
         cen_z2 = (data.markers[br_idx].pose.pose.position.z + data.markers[tl_idx].pose.pose.position.z)/2
         cen_z = (cen_z1 + cen_z2)/2
-        
+
+        # Normal orientation
+        orientation=[median([data.markers[i].pose.pose.orientation.x
+                        for i in [bl_idx,br_idx,tl_idx,tr_idx]]),
+                     median([data.markers[i].pose.pose.orientation.y
+                        for i in [bl_idx,br_idx,tl_idx,tr_idx]]),
+                     median([data.markers[i].pose.pose.orientation.z
+                        for i in [bl_idx,br_idx,tl_idx,tr_idx]]),
+                     median([data.markers[i].pose.pose.orientation.w
+                        for i in [bl_idx,br_idx,tl_idx,tr_idx]])]
+
+        windowPose.position.x=cen_x
+        windowPose.position.y=cen_y
+        windowPose.position.z=cen_z
+        windowPose.orientation.x=orientation[0]
+        windowPose.orientation.y=orientation[1]
+        windowPose.orientation.z=orientation[2]
+        windowPose.orientation.w=orientation[3]
+        pubWindowPose.publish(windowPose)
+        seeWindow.data=True
+
         print(cen_x,cen_y,cen_z)
+    else:
+        seeWindow.data=False
+        
+    pubSeeWindow.publish(seeWindow)
         
 def main():
     #The tags are not detected in single order so we need to specify the order by us
-    global bl,tl,tr,br
+    global bl,tl,tr,br,windowPose,lostWindow,pubWindowPose,pubSeeWindow
     bl=8 
     tl=9 
     tr=10 
@@ -52,6 +77,14 @@ def main():
     info_topic = "ar_pose_marker"
     # Set up your subscriber and define its callback
     rospy.Subscriber(info_topic, AlvarMarkers, callback)
+    # Publish to /window_pose topic
+    pubWindowPose = rospy.Publisher('/window_pose',
+            Pose)
+    pubSeeWindow=rospy.Publisher('/see_window',
+            Pose)
+
+    windowPose=Pose()
+    seeWindow=Bool()
     # Spin until ctrl + c
     rospy.spin()
 

@@ -6,8 +6,12 @@
 
 import rospy
 import time
-from std_msgs.msg import String
+from std_msgs.msg import String,Bool
+from geometry_msgs.msg import Pose
 # Import other necessary ROS packages here
+
+import numpy as np
+from numpy import pi,multiply
 
 ## Our classes
 import drone_control as dcontr
@@ -16,8 +20,6 @@ import drone_cam as dcam
 import window_center as wcenter
 from drone_state import DroneStatus
 import drone_video_display as dvid
-
-
 
 # Can add more states if necessary
 # The following data structure is currently unused and is mostly for visual reference
@@ -100,18 +102,97 @@ class StateMachine:
         # Objects that interface with the drone
         self.controller = dcontr.DroneControl()
         self.keyboard = kcontr.KeyboardController()
-#        self.window = wcenter.??
+#       self.window = wcenter.??
         self.display = dvid.DroneVideoDisplay()
 
+        self.cmd_max=1.0
+        self.cmd_min=-1.0
+        self.position_error_max_expected=3
+        self.yaw_error_max_expected=np.pi
+        # [x,y,z,yaw]
+        self.error=np.zeros(4)
+
+        # Gains for pose_error -> vx/vy,vz,omegayaw
+        # Logic: If we get position in m, we should expect
+        #        error from approx -3 thru 3
+        #        If we get yaw in rad, we should expect
+        #        error from -pi thru pi
+        self.gains=[self.cmd_max/self.position_error_max_expected,
+                    self.cmd_max/self.position_error_max_expected,
+                    self.cmd_max/self.position_error_max_expected,
+                    self.cmd_max/self.yaw_error_max_expected]
+
+        # Window and final tag poses as well as transverse and normal
+        # components
+        self.windowPose=Pose()
+        self.windowPoseT=Pose()
+        self.windowPoseN=Pose()
+        self.lostWindow=Bool()
+        self.finalTagPose=Pose()
+        self.finalTagPoseT=Pose()
+        self.finalTagPoseN=Pose()
+
+        # Minimum normal distance upon approach to object
+        droneWidth=.5 # meters (estimate)
+        self.minNormDist=4*droneWidth
+
+        self.windowPoseSub=rospy.Subscriber('/window_pose',Pose,
+                self.windowPoseCB)
+        self.seeWindowSub=rospy.Subscriber('/see_window',Bool,
+                self.seeWindowCB)
+        self.finalTagPoseSub=rospy.Subscriber('/final_tag_pose', Pose,
+                self.finalTagPoseCB)
         ## Add drone control publishers here *****
         # The following publisher/rate is from the tutorial
         #self.pub = rospy.Publisher('chatter', String, queue_size=10)
         #self.rate = rospy.Rate(10) # 10hz
 
-    # The following function should take a direction vector and map it to a 
-    # roll/pitch/yawdot/zdot command to the drone
-    def SetCommandVector(self):
+
+    ######## CALLBACKS ########
+    def windowPoseCB(self,windowPose):
+        self.windowPose=windowPose
+        (self.windowPoseT,self.windowPoseN)=
+            formVectorComponents(self.windowPose)
+
+    def seeWindowCB(self,seeWindow):
+        self.state.seeWindow=seeWindow
+
+    def finalTagPoseCB(self,finalTagPose):
+        self.finalTagPose=finalTagPose
+        (self.finalTagPoseT,self.finalTagPoseN)=
+            formVectorComponents(self.finalTagPose)
+    ###########################
+
+    #TODO find window pose error components along and transverse to
+    #     window orientation quaternion
+    # Transverse and normal components of pose
+    # assuming that position defines distance from drone to centroid
+    # and orientation defines normal to object principal axes
+    def formVectorComponents(pose):
         pass
+
+    # Form minimum position error to object
+    # Useful for moving to object normal plane while not getting
+    # too close
+    # Defined by:
+    #   current distance to object - minimum normal distance to object
+    def minPositionError(pose):
+        pass
+
+    # The following function should take a pose error and map it to a 
+    # xvel/yvel/yawdot/zdot command to the drone
+    # Pose error of the form: [ex,ey,ez,eyaw]
+    # In the case of moving to window line, error is defined by
+    # perpendicular point on window normal line from current position
+    # or minimum distance point from window
+    # In the case of moving thru window, error is distance to other
+    # side of window
+    # In the case of deviated from window normal, error is distance
+    # to normal line
+    def SetCommandVector(self):
+        vel=multiply(self.error,-self.gains)
+        self.controller.SetCommand(xvel=vel[0],yvel=vel[1],zvel=vel[2],
+                yawvel=vel[3])
 
     # Check if we need to transition to land, fail, or hover
     def emergencyChecks():
@@ -170,7 +251,7 @@ class StateMachine:
             if self.state.SearchState == 0:
                 self.state.SearchState = 1
                 self.state.SearchTimer = time.time()
-                self.controller.SetCommand(yaw_velocity = Params.SearchYawVel) # 0.1 rad/s ?
+                self.controller.SetCommand(yawvel = Params.SearchYawVel) # 0.1 rad/s ?
             elif self.state.SearchState == 1:
                 if time.time() - self.state.SearchTimer >= Params.SearchYawTime:
                     self.state.SearchTimer = time.time()
@@ -213,7 +294,7 @@ class StateMachine:
                     self.state.SearchTimer = time.time()
                     self.state.SearchAttemptHistory.append(self.state.SearchState)
                     self.state.SearchAttemptCounts[self.state.SearchState] += 1
-                    self.controller.SetCommand(yaw_velocity = Params.SearchUpVel)
+                    self.controller.SetCommand(yawvel = Params.SearchUpVel)
 
             # If moving left, right, forward, or backward
             elif self.state.SearchState in [3,4,6,7]:
@@ -222,19 +303,46 @@ class StateMachine:
                     self.state.SearchTimer = time.time()
                     self.state.SearchAttemptHistory.append(self.state.SearchState)
                     self.state.SearchAttemptCounts[self.state.SearchState] += 1
-                    self.controller.SetCommand(yaw_velocity = Params.SearchUpVel)
+                    self.controller.SetCommand(yawvel = Params.SearchUpVel)
                    
-
-
-
-
     # The other functions can have a similar nested state machine to search
     def moveToWindow(self):
-        pass
+        #TODO make norm compare a method
+        if not self.state.seeWindow and np.linalg.norm([
+                    self.windowPose.position.x,
+                    self.windowPose.position.y,
+                    self.windowPose.position.z])-\
+                            self.minNormDist<0:
+            self.state.value=Status.MOVE_THROUGH_WINDOW
+        else if not self.state.seeWindow:
+            self.state.value=Status.SEARCH
+        else:
+            normMinPositionCmp=\
+                np.linalg.norm([
+                    self.windowPoseN.position.x,
+                    self.windowPoseN.position.y,
+                    self.windowPoseN.position.z])-\
+                self.minNormDist
+            if normMinPositionCmp>0:
+                self.error=self.windowPoseT
+            else:
+                self.error=minPositionError(self.windowPose)
+
+            SetCommandVector()
+            self.state.value=Status.MOVE_TO_WINDOW
 
     def moveThroughWindow(self):
-        pass
+        if self.state.seeWindow:
+            self.error=minPositionError(self.windowPose)
+            self.state.value=Status.MOVE_TO_WINDOW
+        else:
+            # Move past window
+            self.error=self.windowPoseN*1.1+self.windowPoseT
+            #TODO motion estimate or open loop?
 
+        SetCommandVector()
+
+    # Do same thing as window for final tag
     def findFinalTag(self):
         pass
 
@@ -258,8 +366,6 @@ class StateMachine:
         self.state.value = Status.LAND
         self.SendLand()
         # Not sure how to do anything else during a fail
-
-
 
 
     def run(self):
@@ -288,24 +394,10 @@ class StateMachine:
             self.land()
         elif self.state.value == Status.FAIL:
             self.fail()
+       
+        rospy.spinOnce()
 
         time.sleep(0.005)
-       
-
-
-
-    ## The following is from the tutorial
-#        while not rospy.is_shutdown():
-#            hello_str = "hello world %s" % rospy.get_time()
-#            rospy.loginfo(hello_str)
-#            self.pub.publish(hello_str)
-#            self.rate.sleep()
-
-    ## When actually running, we probably want
-    # rospy.spin()
-    # Because the subscriber callbacks should handle the state updates
-
-
 
 if __name__ == '__main__':
     try:
