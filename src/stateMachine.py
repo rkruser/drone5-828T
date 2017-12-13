@@ -14,7 +14,7 @@ import drone_control as dcontr
 import keyboard_controller as kcontr
 import drone_cam as dcam
 import window_center as wcenter
-import drone_state as dstate
+from drone_state import DroneStatus
 import drone_video_display as dvid
 
 
@@ -23,7 +23,7 @@ import drone_video_display as dvid
 # The following data structure is currently unused and is mostly for visual reference
 AllStates = [
     "READY", # Waiting for user signal to move to SET
-    "SET", # Spin rotors to check that they work, then wait for user takeoff signal
+    "TEST", # Spin rotors to check that they work, then wait for user takeoff signal
     "TAKEOFF", # Get the drone in the air
     "SEARCH", # Search for the window
     "MOVE_TO_WINDOW", # Fly toward the window, trying to keep centered
@@ -35,6 +35,17 @@ AllStates = [
     "FAIL" #Take emergency measures like shutting down the drone or something
 ]
 
+# Search states
+# 0: No search underway
+# 1: Yawing around to look for tags
+# 2: Moving up a little bit
+# 3: Moving right a little bit
+# 4: Moving forward a little bit
+# 5: Moving down a little bit
+# 6: Moving left a little bit
+# 7: Moving back a little bit
+
+
 
 
 # State values can be extended later
@@ -42,15 +53,20 @@ AllStates = [
 class State:
     def __init__(self, state):
         self.value = state
+        self.SearchState = 0
+        self.SearchAttemptCounts = {1:0, 2:0, 3:0, 4:0, 5:0}
+        self.SearchAttemptHistory = [0]
+        self.SearchTimer = 0
 
-        self.seeCorner1 = False
-        self.seeCorner2 = False
-        self.seeCorner3 = False
-        self.seeCorner4 = False
+        # Tag statuses (or use in subclass?)
+        self.seeLowerLeft = False
+        self.seeLowerRight = False
+        self.seeUpperRight = False
+        self.seeUpperLeft = False
         self.seeWindow = False
         self.seeFinalTag = False
     
-        # tag positions
+        # tag positions (or use in subclass?)
         self.tagLowerLeft = None
         self.tagLowerRight = None
         self.tagUpperRight = None
@@ -61,6 +77,11 @@ class State:
         self.height = 0
         # pos with respect to tags
         self.pose = None
+
+    def resetSearchState(self):
+        self.SearchState = 0
+        self.SearchAttemptCounts = {1:0, 2:0, 3:0, 4:0, 5:0, 6:0, 7:0}
+        self.SearchAttemptHistory = [0]
 
 
 
@@ -79,18 +100,110 @@ class StateMachine:
         #self.pub = rospy.Publisher('chatter', String, queue_size=10)
         #self.rate = rospy.Rate(10) # 10hz
 
+    # Check if we need to transition to land, fail, or hover
+    def emergencyChecks():
+        if self.keyboard.EmergencyShutDownPressed or self.controller.status == DroneStatus.Emergency:
+            self.state = "FAIL"
+            # self.keyboard.EmergencyShutDownPressed = False
+        elif self.keyboard.LandButtonPressed:
+            self.state = "LAND"
+            # self.keyboard.LandButtonPressed = False
+        elif self.keyboard.HoverInPlaceButtonPressed:
+            self.state = "HOVER"
+            # self.keyboard.HoverInPlaceButtonPressed = False
+
 
     def ready(self):
-        pass
+        # Need a way to not keep redoing commands if button presses hold true over multiple iters
+        if self.keyboard.StartButtonPressed:
+            self.state = "TAKEOFF"
+            # self.keyboard.StartButtonPressed = False
+        elif self.keyboard.TestButtonPressed:
+            self.state = "TEST"
+            # self.keyboard.TestButtonPressed = False
 
-    def set(self):
-        pass
+    def test(self):
+        self.controller.SendTest()
+        self.state = "READY"
 
     def takeoff(self):
-        pass
+        if self.controller.status == DroneStatus.Hover:
+            self.state.value = "SEARCH"
+        elif not (self.controller.status == DroneStatus.Takeoff):
+            self.controller.SendTakeoff()
 
+
+    # search does the following:
+    # It yaws around for some number of seconds looking for the window
+    # If it sees the window, it changes to move_to_window state
+    # Otherwise, it moves a bit and tries yawing around again
+    # Movement path: up up right right forward forward down down left left back back
+    # After one cycle of not seeing the window, land the drone
     def search(self):
-        pass
+        if self.state.seeWindow:
+            self.state.resetSearchState()
+            self.state.value = "MOVE_TO_WINDOW"
+        else:
+            if self.state.SearchState == 0:
+                self.state.SearchState = 1
+                self.state.SearchTimer = time.time()
+                self.controller.SetCommand(yaw_velocity = 0.1) # 0.1 rad/s ?
+            elif self.state.SearchState == 1:
+                if time.time() - self.state.SearchTimer >= 10.0:
+                    self.state.SearchTimer = time.time()
+                    self.state.SearchAttemptHistory.append(1)
+                    self.state.SearchAttemptCounts[1] += 1
+
+                    if self.state.SearchAttemptCounts[2] <= 1:
+                        self.state.SearchState = 2
+                        self.controller.SetCommand(z_velocity = 0.05) # What are the units on velocity?
+
+                    elif self.state.SearchAttemptCounts[3] <=1:
+                        self.state.SearchState = 3
+                        self.controller.SetCommandVector(..., ...)
+
+                    elif self.state.SearchAttemptCounts[4] <= 1:
+                        self.state.SearchState = 4
+                        self.controller.SetCommandVector(..., ...)
+
+                    elif self.state.SearchAttemptCounts[5] <= 1:
+                        self.state.SearchState = 5
+                        self.controller.SetCommand(z_velocity = -0.05)
+
+                    elif self.state.SearchAttemptCounts[6] <= 1:
+                        self.state.SearchState = 6
+                        self.controller.SetCommandVector(..., ...)
+
+                    elif self.state.SearchAttemptCounts[7] <= 1:
+                        self.state.SearchState = 7
+                        self.controller.SetCommandVector(..., ...)
+
+                    else:
+                        # Drone has completed a full search loop and found nothing
+                        self.state.resetSearchState()
+                        self.state.value = "LAND"
+
+            # If moving up or down
+            elif self.state.SearchState in [2,5]:
+                if time.time() - self.state.SearchTimer >= 1.0:
+                    self.state.SearchState = 1
+                    self.state.SearchTimer = time.time()
+                    self.state.SearchAttemptHistory.append(self.state.SearchState)
+                    self.state.SearchAttemptCounts[self.state.SearchState] += 1
+                    self.controller.SetCommand(yaw_velocity = 0.1)
+
+            # If moving left, right, forward, or backward
+            elif self.state.SearchState in [3,4,6,7]:
+                if time.time()-self.state.SearchTimer >= 2.0:
+                    self.state.SearchState = 1
+                    self.state.SearchTimer = time.time()
+                    self.state.SearchAttemptHistory.append(self.state.SearchState)
+                    self.state.SearchAttemptCounts[self.state.SearchState] += 1
+                    self.controller.SetCommand(yaw_velocity = 0.1)
+                   
+
+
+
 
     def moveToWindow(self):
         pass
@@ -105,19 +218,30 @@ class StateMachine:
         pass
 
     def hover(self):
-        pass
+        if not (self.controller.status == DroneStatus.Hover):
+            self.controller.SendReset() # Is that what reset does?
+            # Or should I just set everything to 0?
+            # self.controller.SetCommand() # Reset roll/pitch/yaw
+
 
     def land(self):
-        pass
+#        if not (self.controller.status == DroneStatus.Landing):
+        self.controller.sendLand()
+        if self.controller.status == DroneStatus.Landed:
+            self.state.value = "READY"
 
     def fail(self):
-        pass    
+        self.state.value = "LAND"
+        self.SendLand()
+        # Not sure how to do anything else during a fail
 
 
 
 
     def run(self):
       while True:
+        self.emergencyChecks()
+
         if self.state.value == "READY":
             self.ready()
         elif self.state.value == "TAKEOFF":
@@ -139,7 +263,7 @@ class StateMachine:
         elif self.state.value == "FAIL":
             self.fail()
 
-        time.sleep(0.001)
+        time.sleep(0.005)
        
 
 
