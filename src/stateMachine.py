@@ -42,6 +42,13 @@ AllStates = [
 class State:
     def __init__(self, state):
         self.value = state
+
+        self.seeCorner1 = False
+        self.seeCorner2 = False
+        self.seeCorner3 = False
+        self.seeCorner4 = False
+        self.seeWindow = False
+        self.seeFinalTag = False
     
         # tag positions
         self.tagLowerLeft = None
@@ -73,34 +80,37 @@ class StateMachine:
         #self.rate = rospy.Rate(10) # 10hz
 
 
-    def ready(self, msg):
+    def ready(self):
         pass
 
-    def takeoff(self, msg):
+    def set(self):
         pass
 
-    def search(self, msg):
+    def takeoff(self):
         pass
 
-    def moveToWindow(self, msg):
+    def search(self):
         pass
 
-    def moveThroughWindow(self, msg):
+    def moveToWindow(self):
         pass
 
-    def findFinalTag(self, msg):
+    def moveThroughWindow(self):
         pass
 
-    def moveToFinalTag(self, msg):
+    def findFinalTag(self):
         pass
 
-    def hover(self, msg):
+    def moveToFinalTag(self):
         pass
 
-    def land(self, msg):
+    def hover(self):
         pass
 
-    def fail(self, msg):
+    def land(self):
+        pass
+
+    def fail(self):
         pass    
 
 
@@ -109,25 +119,25 @@ class StateMachine:
     def run(self):
       while True:
         if self.state.value == "READY":
-            self.ready(msg)
+            self.ready()
         elif self.state.value == "TAKEOFF":
-            self.takeoff(msg)
+            self.takeoff()
         elif self.state.value == "SEARCH":
-            self.search(msg)
+            self.search()
         elif self.state.value == "MOVE_TO_WINDOW":
-            self.moveToWindow(msg)
+            self.moveToWindow()
         elif self.state.value == "MOVE_THROUGH_WINDOW":
-            self.moveThroughWindow(msg)
+            self.moveThroughWindow()
         elif self.state.value == "FIND_FINAL_TAG":
-            self.findFinalTag(msg)
+            self.findFinalTag()
         elif self.state.value == "MOVE_TO_FINAL_TAG":
-            self.moveToFinalTag(msg)
+            self.moveToFinalTag()
         elif self.state.value == "HOVER":
-            self.hover(msg)
+            self.hover()
         elif self.state.value == "LAND":
-            self.land(msg)
+            self.land()
         elif self.state.value == "FAIL":
-            self.fail(msg)
+            self.fail()
 
         time.sleep(0.001)
        
