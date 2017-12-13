@@ -12,6 +12,7 @@ from geometry_msgs.msg import Pose
 
 import numpy as np
 from numpy import pi,multiply
+import sys
 
 ## Our classes
 import drone_control as dcontr
@@ -20,6 +21,8 @@ import drone_cam as dcam
 import window_center as wcenter
 from drone_state import DroneStatus
 import drone_video_display as dvid
+
+import transform_utility as tu
 
 # Can add more states if necessary
 # The following data structure is currently unused and is mostly for visual reference
@@ -124,8 +127,11 @@ class State:
 
 
 class StateMachine:
-    def __init__(self):
+    def __init__(self, TestMode):
+        self.IsTest = TestMode
+
         self.state = State(Status.READY)
+
 
         # Objects that interface with the drone
         self.controller = dcontr.DroneControl()
@@ -450,7 +456,6 @@ class StateMachine:
         # Not sure how to do anything else during a fail
 
 
-<<<<<<< HEAD
     # Look at the state of the controller, window, etc.
     # and update status variables like
     # seeFinalTag, nearFinalTag, closeToWindow, etc.
@@ -458,8 +463,6 @@ class StateMachine:
         pass
 
 
-=======
->>>>>>> 1e71a29d1482f445a176e0cdce9dfb2f5fd679a0
     def run(self):
       while True:
         self.statusVariableUpdates()
@@ -496,6 +499,10 @@ class StateMachine:
         time.sleep(0.005)
 
 if __name__ == '__main__':
+    TestMode = True
+    # if len(sys.argv)>1:
+    #     if int(sys.argv[1]==1):
+    #         TestMode = True
     try:
         rospy.init_node('StateMachine', anonymous=True)
         S = StateMachine()
