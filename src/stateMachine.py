@@ -36,7 +36,7 @@ class Status:
     LAND = 9 #Land the drone and transition to READY
     FAIL = 10 #Take emergency measures like shutting down the drone or something
 
-
+# I have no idea what good params look like
 class Params:
     SearchYawVel = 0.1
     SearchUpVel = 0.1
@@ -52,6 +52,8 @@ class Params:
     #     for key, val in kwargs.items():
     #         setattr(self, key, val)
 
+    moveThroughWindowTime = 3.0
+
 
          
 
@@ -60,11 +62,39 @@ class Params:
 # Can add progress variables within states
 class State:
     def __init__(self, state):
+        self.resetState(state)
+
+    def resetSearchState(self):
+        self.SearchState = 0
+        self.SearchAttemptCounts = {1:0, 2:0, 3:0, 4:0, 5:0, 6:0, 7:0}
+        self.SearchAttemptHistory = [0]
+
+    def resetMoveToWindow(self):
+        pass
+
+    def resetMoveThroughWindow(self):
+        pass
+
+    def resetFindFinalTag(self):
+        pass
+
+    def resetMoveToFinalTag(self):
+        pass
+
+    def resetState(self, state=Status.READY):
         self.value = state
+
         self.SearchState = 0
         self.SearchAttemptCounts = {1:0, 2:0, 3:0, 4:0, 5:0, 6:0, 7:0}
         self.SearchAttemptHistory = [0]
         self.SearchTimer = 0
+
+        self.moveToWindowState = 0
+#        self.moveToWindowTimer = 0
+
+        self.moveThroughWindowState = 0
+        self.moveThroughWindowTimer = 0
+        self.movedThroughWindow = False
 
         # Tag statuses (or use in subclass?)
         self.seeLowerLeft = False
@@ -72,7 +102,10 @@ class State:
         self.seeUpperRight = False
         self.seeUpperLeft = False
         self.seeWindow = False
+        self.closeToWindow = False
+        self.atNormal = False
         self.seeFinalTag = False
+        self.nearFinalTag = False
     
         # tag positions (or use in subclass?)
         self.tagLowerLeft = None
@@ -85,11 +118,6 @@ class State:
         self.height = 0
         # pos with respect to tags
         self.pose = None
-
-    def resetSearchState(self):
-        self.SearchState = 0
-        self.SearchAttemptCounts = {1:0, 2:0, 3:0, 4:0, 5:0, 6:0, 7:0}
-        self.SearchAttemptHistory = [0]
 
 
 
@@ -226,44 +254,95 @@ class StateMachine:
                    
 
 
+    def commandToNormal(self):
+        pass
 
+    def commandAlongNormal(self):
+        pass
 
     # The other functions can have a similar nested state machine to search
     def moveToWindow(self):
-        pass
+        if not self.state.seeWindow and not self.state.closeToWindow:
+            self.state.value = Status.SEARCH
+            self.resetMoveToWindow()
+        elif self.state.closeToWindow:
+            self.state.value = Status.MOVE_THROUGH_WINDOW
+            self.state.moveThroughWindowTimer = time.time()
+        else:
+            # Move to normal line
+            if self.state.moveToWindowState == 0:
+                if self.state.atNormal: #update in a separate state update
+                    self.state.moveToWindowState = 1
+                else:
+                    # Need to yaw toward window while squaring up
+                    self.commandToNormal()
+            # Move toward window along normal
+            elif self.state.moveToWindowState == 1:
+                if not self.state.atNormal:
+                    self.state.moveToWindowState = 0
+                else:
+                    self.commandAlongNormal()
+
+
 
     def moveThroughWindow(self):
-        pass
+        if time.time()-self.state.moveThroughWindowTimer < Params.moveThroughWindowTime:
+            self.commandAlongNormal()
+        else:
+            self.state.movedThroughWindow = True
+            self.state.value = Status.FIND_FINAL_TAG
+
+
+        
 
     def findFinalTag(self):
+        if self.state.seeFinalTag:
+            self.state.value = Status.MOVE_TO_FINAL_TAG
+        else:
+            pass # Do a search for final tag
+
+
+    def CommandToFinalTag():
         pass
 
     def moveToFinalTag(self):
-        pass
+        if self.nearFinalTag:
+            self.state.value = Status.HOVER
+        elif not self.state.seeFinalTag:
+            self.state.value = Status.FIND_FINAL_TAG
+        else:
+            self.CommandToFinalTag()
+
 
     def hover(self):
         if not (self.controller.status == DroneStatus.Hover):
-            self.controller.SendReset() # Is that what reset does?
+#            self.controller.SendReset() # Is that what reset does?
             # Or should I just set everything to 0?
-            # self.controller.SetCommand() # Reset roll/pitch/yaw
+            self.controller.SetCommand() # Reset roll/pitch/yaw
 
 
     def land(self):
 #        if not (self.controller.status == DroneStatus.Landing):
         self.controller.sendLand()
         if self.controller.status == DroneStatus.Landed:
-            self.state.value = Status.READY
+            self.state.resetState()
 
     def fail(self):
         self.state.value = Status.LAND
-        self.SendLand()
+        self.land()
         # Not sure how to do anything else during a fail
 
 
+    # Look at the state of the controller, window, etc.
+    # and update status variables like
+    # seeFinalTag, nearFinalTag, closeToWindow, etc.
+    def statusVariableUpdates(self):
+        pass
 
 
     def run(self):
       while True:
+        self.statusVariableUpdates()
         self.emergencyChecks()
 
         if self.state.value == Status.READY:
