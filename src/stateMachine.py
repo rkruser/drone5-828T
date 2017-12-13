@@ -21,6 +21,8 @@ import drone_video_display as dvid
 
 # Can add more states if necessary
 # The following data structure is currently unused and is mostly for visual reference
+
+# Later: Make this into a class just like Params, use the class instead of strings
 AllStates = [
     "READY", # Waiting for user signal to move to SET
     "TEST", # Spin rotors to check that they work, then wait for user takeoff signal
@@ -35,17 +37,21 @@ AllStates = [
     "FAIL" #Take emergency measures like shutting down the drone or something
 ]
 
-# Search states
-# 0: No search underway
-# 1: Yawing around to look for tags
-# 2: Moving up a little bit
-# 3: Moving right a little bit
-# 4: Moving forward a little bit
-# 5: Moving down a little bit
-# 6: Moving left a little bit
-# 7: Moving back a little bit
+
+class Params:
+    SearchYawVel = 0.1
+    SearchUpVel = 0.1
+    SearchDownVel = 0.1
+    SearchRightVec = (1,0)
+    SearchLeftVec = (-1,0)
+    SearchForwardVec = (0,1)
+    SearchBackwardVec = (0,-1)
+    # def __init__(self, **kwargs):
+    #     for key, val in kwargs.items():
+    #         setattr(self, key, val)
 
 
+         
 
 
 # State values can be extended later
@@ -54,7 +60,7 @@ class State:
     def __init__(self, state):
         self.value = state
         self.SearchState = 0
-        self.SearchAttemptCounts = {1:0, 2:0, 3:0, 4:0, 5:0}
+        self.SearchAttemptCounts = {1:0, 2:0, 3:0, 4:0, 5:0, 6:0, 7:0}
         self.SearchAttemptHistory = [0]
         self.SearchTimer = 0
 
@@ -133,12 +139,22 @@ class StateMachine:
             self.controller.SendTakeoff()
 
 
-    # search does the following:
+    # Search does the following:
     # It yaws around for some number of seconds looking for the window
     # If it sees the window, it changes to move_to_window state
     # Otherwise, it moves a bit and tries yawing around again
     # Movement path: up up right right forward forward down down left left back back
     # After one cycle of not seeing the window, land the drone
+
+    # Search states
+    # 0: No search underway
+    # 1: Yawing around to look for tags
+    # 2: Moving up a little bit
+    # 3: Moving right a little bit
+    # 4: Moving forward a little bit
+    # 5: Moving down a little bit
+    # 6: Moving left a little bit
+    # 7: Moving back a little bit
     def search(self):
         if self.state.seeWindow:
             self.state.resetSearchState()
@@ -147,7 +163,7 @@ class StateMachine:
             if self.state.SearchState == 0:
                 self.state.SearchState = 1
                 self.state.SearchTimer = time.time()
-                self.controller.SetCommand(yaw_velocity = 0.1) # 0.1 rad/s ?
+                self.controller.SetCommand(yaw_velocity = Params.SearchYawVel) # 0.1 rad/s ?
             elif self.state.SearchState == 1:
                 if time.time() - self.state.SearchTimer >= 10.0:
                     self.state.SearchTimer = time.time()
@@ -156,11 +172,11 @@ class StateMachine:
 
                     if self.state.SearchAttemptCounts[2] <= 1:
                         self.state.SearchState = 2
-                        self.controller.SetCommand(z_velocity = 0.05) # What are the units on velocity?
+                        self.controller.SetCommand(z_velocity = Params.SearchUpVel) # What are the units on velocity?
 
                     elif self.state.SearchAttemptCounts[3] <=1:
                         self.state.SearchState = 3
-                        self.controller.SetCommandVector(..., ...)
+                        self.controller.SetCommandVector(..., ...) # Use Params.SearchRightVel
 
                     elif self.state.SearchAttemptCounts[4] <= 1:
                         self.state.SearchState = 4
@@ -168,7 +184,7 @@ class StateMachine:
 
                     elif self.state.SearchAttemptCounts[5] <= 1:
                         self.state.SearchState = 5
-                        self.controller.SetCommand(z_velocity = -0.05)
+                        self.controller.SetCommand(z_velocity = Params.SearchDownVel)
 
                     elif self.state.SearchAttemptCounts[6] <= 1:
                         self.state.SearchState = 6
@@ -190,7 +206,7 @@ class StateMachine:
                     self.state.SearchTimer = time.time()
                     self.state.SearchAttemptHistory.append(self.state.SearchState)
                     self.state.SearchAttemptCounts[self.state.SearchState] += 1
-                    self.controller.SetCommand(yaw_velocity = 0.1)
+                    self.controller.SetCommand(yaw_velocity = Params.SearchUpVel)
 
             # If moving left, right, forward, or backward
             elif self.state.SearchState in [3,4,6,7]:
@@ -199,12 +215,13 @@ class StateMachine:
                     self.state.SearchTimer = time.time()
                     self.state.SearchAttemptHistory.append(self.state.SearchState)
                     self.state.SearchAttemptCounts[self.state.SearchState] += 1
-                    self.controller.SetCommand(yaw_velocity = 0.1)
+                    self.controller.SetCommand(yaw_velocity = Params.SearchUpVel)
                    
 
 
 
 
+    # The other functions can have a similar nested state machine to search
     def moveToWindow(self):
         pass
 
