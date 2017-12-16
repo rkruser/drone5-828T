@@ -16,7 +16,7 @@ RIGHT = -1
 LEFT = 1
 Z_ERR = 0.15
 Y_ERR = 0.10
-YAW_ERR = 0.36
+YAW_ERR = 0.18
 CENTER_DURATION = 0.5
 rise = 0
 
@@ -33,6 +33,7 @@ class Status:
     LAND = 9 #Land the drone and transition to READY
     FAIL = 10 #Take emergency measures like shutting down the drone or something
     FOUND_WINDOW = 11
+    PAUSE = 12
 
 
 class Params:
@@ -55,11 +56,11 @@ class Params:
 
 def search(direction):
 	if direction == -1:
-		control.SetCommand(0,0,-0.1,0)
+		control.SetCommand(0,0,-0.05,0)
 		print "Yaw Right Search"
 	elif direction == 1:
 		print "Yaw Left Search"
-		control.SetCommand(0,0,0.1,0)
+		control.SetCommand(0,0,0.05,0)
 
 if __name__ == '__main__':
 	process_state = Status.READY
@@ -83,8 +84,8 @@ if __name__ == '__main__':
 		
 		while process_state == Status.SEARCH:
 			start = rospy.get_rostime()
-			while rospy.get_rostime() - start <= rospy.Duration(6) and W_cen.cen_x == None and rise == 0:
-				control.SetCommand(0,0,0,0.5)
+			while rospy.get_rostime() - start <= rospy.Duration(4) and W_cen.cen_x == None and rise == 0:
+				control.SetCommand(0,0,0,0.15)
 				print "Rising"
 
 			rise = 1
@@ -121,21 +122,21 @@ if __name__ == '__main__':
 
 					start = rospy.get_rostime()
 					while rospy.get_rostime() - start <= rospy.Duration(3):
-						control.SetCommand(0, 0.1, 0, 0)
+						control.SetCommand(0, 0.05, 0, 0)
 						print "Move forward"
-					process_state = Status.LAND #centered
+					process_state = Status.PAUSE #centered
 					#break
 				elif W_cen.cen_y > Y_ERR:
 					start = rospy.get_rostime()
 					while rospy.get_rostime() - start <= rospy.Duration(CENTER_DURATION):
-						control.SetCommand(0.05,0,0,0)
+						control.SetCommand(0.01,0,0,0)
 						print "Moving Left"
 					
-					continue
+					#continue
 				elif W_cen.cen_y < -Y_ERR:
 					start = rospy.get_rostime()
 					while rospy.get_rostime() - start <= rospy.Duration(CENTER_DURATION):
-						control.SetCommand(-0.05,0,0,0)
+						control.SetCommand(-0.01,0,0,0)
 						print "Moving Right"
 					
 					#continue
@@ -156,14 +157,14 @@ if __name__ == '__main__':
 				elif W_cen.y_err > -YAW_ERR:
 					start = rospy.get_rostime()
 					while rospy.get_rostime() - start <= rospy.Duration(CENTER_DURATION):
-						control.SetCommand(0,0,0.05,0)
+						control.SetCommand(0,0,-0.05,0)
 						print "Rotating Right"
 					
 					#continue
 				elif W_cen.y_err < YAW_ERR:
 					start = rospy.get_rostime()
 					while rospy.get_rostime() - start <= rospy.Duration(CENTER_DURATION):
-						control.SetCommand(0,0,-0.05,0)
+						control.SetCommand(0,0,0.05,0)
 						print "Rotating Left"
 					
 					#continue
@@ -174,7 +175,11 @@ if __name__ == '__main__':
 			# 		control.SetCommand(0, 0.1, 0, 0) 
 			# 	process_state = Status.LAND
 			
-				
+		while process_state == Status.PAUSE:
+			start = rospy.get_rostime()
+			while rospy.get_rostime() - start <= rospy.Duration(3):
+				control.SetCommand(0,0,0,0)
+			process_state = Status.LAND
 
 		while process_state == Status.LAND:
 			control.SendLand()
