@@ -9,6 +9,7 @@
 	<buildtool_depend>catkin</buildtool_depend>
 	
 	<run_depend>ardrone_autonomy</run_depend>
+	<run_depend>tum_ardrone</run_depend>
 	<run_depend>joy</run_depend>
 	
 	<license>BSD</license>

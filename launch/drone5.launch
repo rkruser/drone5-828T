@@ -1,0 +1,33 @@
+<launch>
+		<!-- Launches the AR.Drone driver -->
+	<node name="ardrone_driver" pkg="ardrone_autonomy" type="ardrone_driver" output="screen" clear_params="true">
+	    <param name="outdoor" value="0" /> <!-- If we are flying outdoors, will select more aggressive default settings -->
+	    <param name="flight_without_shell" value="0" /> <!-- Changes internal controller gains if we are flying without the propeller guard -->
+	    
+	    <param name="altitude_max" value="3000" /> <!-- in millimeters = 3 meters = 9' -->
+        <param name="altitude_min" value="50" /> <!-- in millimeters = 5cm = 2" -->
+        <param name="euler_angle_max" value="0.1" /> <!-- maximum allowable body angle in radians = 5 degrees -->
+        <param name="control_vz_max" value="200" /> <!-- maximum z velocity in mm/sec = 0.2m/sec -->
+	    <param name="control_yaw" value="0.7" /> <!-- maximum rotation rate in radians/sec = 40 degrees per second (1/9 rev/sec) -->
+	</node>
+
+	<arg name="marker_size" default="11.5" />
+    <arg name="max_new_marker_error" default="0.08" />
+    <arg name="max_track_error" default="0.2" />
+    <arg name="cam_image_topic" default="/ardrone/front/image_raw" />
+    <arg name="cam_info_topic" default="/ardrone/front/camera_info" />
+    <arg name="output_frame" default="/ardrone_base_link" />
+
+    <node name="ar_track_alvar" pkg="ar_track_alvar" type="individualMarkersNoKinect" respawn="false" output="screen">
+            <param name="marker_size"           type="double" value="$(arg marker_size)" />
+            <param name="max_new_marker_error"  type="double" value="$(arg max_new_marker_error)" />
+            <param name="max_track_error"       type="double" value="$(arg max_track_error)" />
+            <param name="output_frame"          type="string" value="$(arg output_frame)" />
+
+            <remap from="camera_image"  to="$(arg cam_image_topic)" />
+            <remap from="camera_info"   to="$(arg cam_info_topic)" />
+    </node>
+
+    !-- <node name="Markers" pkg="drone5" type="WindowCenter.py" required="true"/>
+
+</launch>

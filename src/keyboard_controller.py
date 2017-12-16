@@ -6,11 +6,11 @@
 # This controller extends the base DroneVideoDisplay class, adding a keypress handler to enable keyboard control of the drone
 
 # Import the ROS libraries, and load the manifest file which through <depend package=... /> will give us access to the project dependencies
-import roslib; roslib.load_manifest('ardrone_tutorials')
+import roslib; roslib.load_manifest('drone5')
 import rospy
 
 # Load the DroneController class, which handles interactions with the drone, and the DroneVideoDisplay class, which handles video display
-from drone_control import DroneControl
+from drone_control1 import DroneControl
 from drone_video_display import DroneVideoDisplay
 
 # Finally the GUI libraries

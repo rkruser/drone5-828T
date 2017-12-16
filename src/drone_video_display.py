@@ -8,7 +8,7 @@
 # By default it includes no control functionality. The class can be extended to implement key or mouse listeners if required
 
 # Import the ROS libraries, and load the manifest file which through <depend package=... /> will give us access to the project dependencies
-import roslib; roslib.load_manifest('ardrone_tutorials')
+import roslib; roslib.load_manifest('drone5')
 import rospy
 import Image
 
@@ -20,7 +20,7 @@ from ardrone_autonomy.msg import Navdata # for receiving navdata feedback
 from threading import Lock
 
 # An enumeration of Drone Statuses
-from drone_status import DroneStatus
+from drone_state import DroneStatus
 
 # The GUI libraries
 from PySide import QtCore, QtGui
@@ -35,13 +35,13 @@ DETECT_RADIUS = 4 # the radius of the circle drawn when a tag is detected
 class DroneVideoDisplay(QtGui.QMainWindow):
 	StatusMessages = {
 		DroneStatus.Emergency : 'Emergency',
-		DroneStatus.Inited    : 'Initialized',
+		DroneStatus.Init      : 'Initialized',
 		DroneStatus.Landed    : 'Landed',
 		DroneStatus.Flying    : 'Flying',
-		DroneStatus.Hovering  : 'Hovering',
+		DroneStatus.Hover 	  : 'Hovering',
 		DroneStatus.Test      : 'Test (?)',
-		DroneStatus.TakingOff : 'Taking Off',
-		DroneStatus.GotoHover : 'Going to Hover Mode',
+		DroneStatus.Takeoff   : 'Taking Off',
+		DroneStatus.GoToHover : 'Going to Hover Mode',
 		DroneStatus.Landing   : 'Landing',
 		DroneStatus.Looping   : 'Looping (?)'
 		}

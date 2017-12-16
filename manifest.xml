@@ -7,6 +7,7 @@
   <review status="unreviewed" notes=""/>
 
   <depend package="ardrone_autonomy" />
+  <depend package="tum_ardrone" />
   <depend package="joy" />
   
 </package>
